@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Attendance Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(90deg, #74ebd5, #acb6e5);
+      padding: 20px;
+      margin: 0;
+    }
+    h2 {
+      text-align: center;
+      color: #0f172a;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label, select, input, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+    }
+    button {
+      background: #4338ca;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    .hidden { display: none; }
+    .report-options {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .report-options button {
+      flex: 1;
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    .report-options button.active {
+      background: #4338ca;
+      color: white;
+    }
+    #reportSection {
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+    #reportSection table {
+      min-width: 600px;
+    }
+    .container {
+      max-width: 90vw;
+    }
+    .student-report-options {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .student-report-options button {
+      flex: 1;
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    .student-report-options button.active {
+      background: #4338ca;
+      color: white;
+    }
+    .error-message {
+      color: #d32f2f;
+      padding: 10px;
+      background: #ffebee;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Attendance Report</h2>
+
+    <div class="report-options">
+      <button id="dailyBtn" class="active">Daily Report</button>
+      <button id="monthlyBtn">Monthly Report</button>
+    </div>
+
+    <label for="classSelect">Select Class</label>
+    <select id="classSelect"><option>Loading...</option></select>
+
+    <div id="dailyFields">
+      <label for="date">Select Date</label>
+      <input type="date" id="date">
+    </div>
+
+    <div id="monthlyFields" class="hidden">
+      <label for="month">Select Month</label>
+      <input type="month" id="month" />
+    </div>
+
+    
+
+    <button id="btnFetch">Get Report</button>
+
+    <!-- Student filter -->
+    <input type="text" id="nameFilter" placeholder="Filter by student name..." style="display:none;">
+
+    <!-- Export buttons -->
+    <div id="exportButtons" style="margin-top:10px; display:none; gap:10px;">
+      <button id="btnPDF">📄 Download PDF</button>
+      <button id="btnCSV">📁 Download CSV</button>
+    </div>
+
+    <div id="reportSection"></div>
+  </div>
+
+  <script>
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbyNWTluHoK_rZD0bJXll7g0vZ3f6yr4bQbrRw5FmIeMDJSQyvO6cTcR6oVZK8e-yj1icA/exec';
+    let reportType = 'daily';
+    let currentTableHTML = '';
+    let currentCSV = '';
+
+    // Toggle buttons behavior
+    document.getElementById('dailyBtn').addEventListener('click', () => toggleType('daily'));
+    document.getElementById('monthlyBtn').addEventListener('click', () => toggleType('monthly'));
+
+    
+   
+    
+    function toggleStudentView(type) {
+      studentViewType = type;
+      document.getElementById('weeklyViewBtn').classList.toggle('active', type==='weekly');
+      document.getElementById('monthlyViewBtn').classList.toggle('active', type!=='weekly');
+      document.getElementById('studentWeek').classList.toggle('hidden', type!=='weekly');
+      document.getElementById('studentMonth').classList.toggle('hidden', type==='weekly');
+      document.querySelector('label[for="studentWeek"]').classList.toggle('hidden', type!=='weekly');
+      document.querySelector('label[for="studentMonth"]').classList.toggle('hidden', type==='weekly');
+    }
+
+    function toggleType(type) {
+      reportType = type;
+      document.getElementById('dailyBtn').classList.toggle('active', type==='daily');
+      document.getElementById('monthlyBtn').classList.toggle('active', type==='monthly');
+      
+      document.getElementById('dailyFields').classList.toggle('hidden', type!=='daily');
+      document.getElementById('monthlyFields').classList.toggle('hidden', type!=='monthly');
+     
+      
+      document.getElementById('nameFilter').style.display = type === 'student' ? 'none' : 'none';
+      document.getElementById('exportButtons').style.display = 'none';
+      document.getElementById('reportSection').innerHTML = '';
+    }
+
+    // Load classes
+    async function loadClasses(){
+      try {
+        const res = await fetch(scriptURL + '?action=getClassList');
+        const list = await res.json();
+        
+        // Check if the response is an array
+        if (!Array.isArray(list)) {
+          throw new Error('Invalid class list format');
+        }
+        
+        const sel = document.getElementById('classSelect');
+        sel.innerHTML = '<option value="">-- Select Class --</option>';
+        list.forEach(c => sel.add(new Option(c, c)));
+      } catch(e) {
+        console.error('Error loading classes:', e);
+        document.getElementById('classSelect').innerHTML = '<option value="">Error loading classes</option>';
+      }
+    }
+    loadClasses();
+
+   
+
+    document.getElementById('btnFetch').addEventListener('click', fetchReport);
+    document.getElementById('nameFilter').addEventListener('input', filterNames);
+
+    document.getElementById('btnCSV').addEventListener('click', downloadCSV);
+    document.getElementById('btnPDF').addEventListener('click', downloadPDF);
+
+    async function fetchReport() {
+      if (reportType === 'student') {
+        await fetchStudentReport();
+        return;
+      }
+      
+      const cls = document.getElementById('classSelect').value;
+      if (!cls) return alert('Please select a class.');
+      
+      const dateInput = reportType === 'daily' ? document.getElementById('date').value :
+                      document.getElementById('month').value;
+      if (!dateInput) return alert('Please select date/month.');
+
+      document.getElementById('reportSection').innerText = 'Loading...';
+
+      let url = scriptURL + `?action=getAttendanceReport&className=${encodeURIComponent(cls)}`;
+      
+      if (reportType === 'daily') {
+        const dObj = new Date(dateInput);
+        const day = String(dObj.getDate()).padStart(2, '0');
+        const month = String(dObj.getMonth() + 1).padStart(2, '0');
+        const d = `${day}/${month}/${dObj.getFullYear()}`;
+        
+        url += `&date=${encodeURIComponent(d)}`;
+      } else {
+        const [y, m] = dateInput.split('-');
+        url += `&month=${m}&year=${y}`;
+      }
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        // Check if data is in expected format
+        if (!data || !Array.isArray(data)) {
+          throw new Error('Invalid data format received');
+        }
+
+        if (data.length === 0) {
+          document.getElementById('reportSection').innerHTML = '<p class="error-message">No attendance data found for the selected criteria.</p>';
+          document.getElementById('exportButtons').style.display = 'none';
+          return;
+        }
+
+        buildTable(data);
+      } catch (error) {
+        console.error('Error fetching report:', error);
+        document.getElementById('reportSection').innerHTML = `
+          <p class="error-message">
+            Error loading attendance data. Please try again.<br>
+            ${error.message || ''}
+          </p>
+        `;
+      }
+    }
+
+    async function fetchStudentReport() {
+      const cls = document.getElementById('classSelect').value;
+      const studentRoll = document.getElementById('studentSelect').value;
+      
+      if (!cls) return alert('Please select a class.');
+      if (!studentRoll) return alert('Please select a student.');
+      
+      let dateInput, startDate, endDate;
+      
+      if (studentViewType === 'weekly') {
+        dateInput = document.getElementById('studentWeek').value;
+        if (!dateInput) return alert('Please select a week.');
+        
+        // Calculate start and end dates of the week
+        const year = dateInput.substring(0, 4);
+        const weekNum = dateInput.substring(6);
+        const firstDay = new Date(year, 0, 1);
+        const daysOffset = firstDay.getDay() > 4 ? 7 - firstDay.getDay() : -firstDay.getDay();
+        const firstMonday = new Date(firstDay.setDate(firstDay.getDate() + daysOffset));
+        const targetWeek = new Date(firstMonday.setDate(firstMonday.getDate() + (weekNum - 1) * 7));
+        
+        startDate = new Date(targetWeek);
+        endDate = new Date(targetWeek);
+        endDate.setDate(endDate.getDate() + 6);
+      } else {
+        dateInput = document.getElementById('studentMonth').value;
+        if (!dateInput) return alert('Please select a month.');
+        
+        const [year, month] = dateInput.split('-');
+        startDate = new Date(year, month - 1, 1);
+        endDate = new Date(year, month, 0);
+      }
+      
+      document.getElementById('reportSection').innerText = 'Loading...';
+      
+      try {
+        // Format dates as dd/mm/yyyy
+        const formatDate = (date) => {
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          return `${day}/${month}/${date.getFullYear()}`;
+        };
+        
+        const startDateStr = formatDate(startDate);
+        const endDateStr = formatDate(endDate);
+        
+        const url = scriptURL + 
+          `?action=getStudentAttendanceReport` +
+          `&className=${encodeURIComponent(cls)}` +
+          `&roll=${encodeURIComponent(studentRoll)}` +
+          `&startDate=${encodeURIComponent(startDateStr)}` +
+          `&endDate=${encodeURIComponent(endDateStr)}`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid student data format');
+        }
+
+        if (!data.attendance || Object.keys(data.attendance).length === 0) {
+          document.getElementById('reportSection').innerHTML = '<p class="error-message">No attendance records found for this student during the selected period.</p>';
+          document.getElementById('exportButtons').style.display = 'none';
+          return;
+        }
+        
+        buildStudentTable(data);
+      } catch (error) {
+        console.error('Error fetching student report:', error);
+        document.getElementById('reportSection').innerHTML = `
+          <p class="error-message">
+            Error loading student attendance data.<br>
+            ${error.message || ''}
+          </p>
+        `;
+      }
+    }
+
+    function buildStudentTable(studentData) {
+      // Check if we have valid attendance data
+      if (!studentData.attendance || typeof studentData.attendance !== 'object') {
+        document.getElementById('reportSection').innerHTML = '<p class="error-message">Invalid attendance data format</p>';
+        return;
+      }
+
+      // Sort dates chronologically
+      const dates = Object.keys(studentData.attendance).sort((a, b) => {
+        const [da, ma, ya] = a.split('/');
+        const [db, mb, yb] = b.split('/');
+        return new Date(`${ya}-${ma}-${da}`) - new Date(`${yb}-${mb}-${db}`);
+      });
+      
+      let html = `
+        <div style="margin-bottom: 20px;">
+          <h3 style="margin: 0;">${studentData.name || 'Unknown'} (Roll: ${studentData.roll || 'N/A'})</h3>
+          <p style="margin: 5px 0 0 0; color: #555;">${dates.length} attendance records found</p>
+        </div>
+        <table>
+          <tr>
+            <th>Date</th>
+            <th>Status</th>
+          </tr>
+      `;
+      
+      let csv = `Student Name,${studentData.name || 'Unknown'}\nRoll Number,${studentData.roll || 'N/A'}\n\nDate,Status\n`;
+      
+      dates.forEach(date => {
+        const status = studentData.attendance[date] || 'N/A';
+        html += `<tr><td>${date}</td><td>${status}</td></tr>`;
+        csv += `${date},${status}\n`;
+      });
+      
+      html += '</table>';
+      currentTableHTML = html;
+      currentCSV = csv;
+      
+      const rs = document.getElementById('reportSection');
+      rs.innerHTML = currentTableHTML;
+      document.getElementById('exportButtons').style.display = 'flex';
+    }
+
+    function buildTable(data) {
+      // First check if data is an array
+      if (!Array.isArray(data)) {
+        document.getElementById('reportSection').innerHTML = '<p class="error-message">Invalid data format received</p>';
+        return;
+      }
+
+      if (reportType === 'monthly') {
+        // Check if the first item has attendance data
+        if (data.length === 0 || !data[0].attendance || typeof data[0].attendance !== 'object') {
+          document.getElementById('reportSection').innerHTML = '<p class="error-message">No attendance has been marked yet for this month.</p>';
+          document.getElementById('exportButtons').style.display = 'none';
+          return;
+        }
+
+        const days = Object.keys(data[0].attendance);
+        days.sort((a,b) => {
+          const [da, ma, ya] = a.split('/');
+          const [db, mb, yb] = b.split('/');
+          return new Date(`${ya}-${ma}-${da}`) - new Date(`${yb}-${mb}-${db}`);
+        });
+
+        let html = '<table><tr><th>Roll</th><th>Name</th>';
+days.forEach(d => {
+  const parts = d.split(/[\/\-]/); // handles both "21/07/2025" or "2025-07-21"
+  let formatted = d;
+  if (parts.length === 3) {
+    const [day, month, year] = parts[0].length === 4 ? [parts[2], parts[1], parts[0]] : parts;
+    formatted = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+  }
+  html += `<th>${formatted}</th>`;
+});
+html += '</tr>';
+
+
+        let csv = 'Roll,Name,' + days.join(',') + '\n';
+
+        data.forEach(r => {
+          html += `<tr><td>${r.roll || ''}</td><td>${r.name || ''}</td>`;
+          csv += `${r.roll || ''},${r.name || ''}`;
+          days.forEach(day => {
+            const val = r.attendance?.[day] || '';
+            html += `<td>${val}</td>`;
+            csv += `,${val}`;
+          });
+          html += '</tr>';
+          csv += '\n';
+        });
+
+        html += '</table>';
+        currentTableHTML = html;
+        currentCSV = csv;
+
+      } else {
+        // daily report
+        let html = '<table><tr><th>Roll</th><th>Name</th><th>Status</th></tr>';
+        let csv = 'Roll,Name,Status\n';
+        data.forEach(r => {
+          html += `<tr><td>${r.roll || ''}</td><td>${r.name || ''}</td><td>${r.status || ''}</td></tr>`;
+          csv += `${r.roll || ''},${r.name || ''},${r.status || ''}\n`;
+        });
+        html += '</table>';
+        currentTableHTML = html;
+        currentCSV = csv;
+      }
+
+      const rs = document.getElementById('reportSection');
+      rs.innerHTML = currentTableHTML;
+      document.getElementById('nameFilter').style.display = reportType === 'student' ? 'none' : '';
+      document.getElementById('exportButtons').style.display = 'flex';
+    }
+
+    function filterNames(){
+      const term = this.value.toLowerCase();
+      const rows = document.querySelectorAll('#reportSection table tr');
+      rows.forEach((tr,i)=> {
+        if (i===0) return;
+        const nameCell = tr.children[1];
+        if (nameCell) {
+          tr.style.display = nameCell.textContent.toLowerCase().includes(term) ? '' : 'none';
+        }
+      });
+    }
+
+    function downloadCSV() {
+      const schoolName = "SDN Bandungrejosari 3 Malang";
+      const className = document.getElementById("classSelect")?.value || "Unknown";
+
+      const teacherMap = {
+        "Class_1A": "Ms. FARIDA HARIANI",
+        "Class_1B": "Ms. INE AYU KUSUMAH DEWI",
+        "Class_2A": "Ms. NADIA ROFIKA",
+        "Class_2B": "Mr. WIMBI DAMARA PUTRA",
+        "Class_3A": "Ms. WATINI",
+        "Class_3B": "Ms. KRISTIN KARTIKAWATI",
+        "Class_4A": "Ms. HARTATI PUSPITA DININGRUM",
+        "Class_4B": "Ms. Agustina Putri Setia Mardika",
+        "Class_5A": "Ms. PRIMA EKA SARI",
+        "Class_5B": "Ms. MU'AWANAH",
+        "Class_6A": "Ms. AULINA MAGHFIROH",
+        "Class_6B": "Mr. HERMIN SUSWAT",
+      };
+
+      const teacherName = teacherMap[className] || "Unknown";
+      const today = new Date().toLocaleDateString('id-ID');
+
+      const headerCSV = `School Name:,${schoolName}\nClass:,${className.replace("_", " ")}\nTeacher:,${teacherName}\nReport Date:,${today}\n\n`;
+      const fullCSV = headerCSV + currentCSV;
+
+      const blob = new Blob([fullCSV], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'attendance.csv';
+      a.click();
+    }
+
+    function downloadPDF() {
+      const schoolName = "SDN Bandungrejosari 3 Malang";
+      const className = document.getElementById("classSelect")?.value || "Unknown";
+
+      const teacherMap = {
+        "Class_1A": "Ms. FARIDA HARIANI",
+        "Class_1B": "Ms. INE AYU KUSUMAH DEWI",
+        "Class_2A": "Ms. NADIA ROFIKA",
+        "Class_2B": "Mr. WIMBI DAMARA PUTRA",
+        "Class_3A": "Ms. WATINI",
+        "Class_3B": "Ms. KRISTIN KARTIKAWATI",
+        "Class_4A": "Ms. HARTATI PUSPITA DININGRUM",
+        "Class_4B": "Ms. Agustina Putri Setia Mardika",
+        "Class_5A": "Ms. PRIMA EKA SARI",
+        "Class_5B": "Ms. MU'AWANAH",
+        "Class_6A": "Ms. AULINA MAGHFIROH",
+        "Class_6B": "Mr. HERMIN SUSWAT",
+      };
+
+      const teacherName = teacherMap[className] || "Unknown";
+
+      const headerHTML = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <h2 style="margin:0; color:#d62828;">${schoolName}</h2>
+          <p style="margin:0; font-size:16px;">Class: ${className.replace("_", " ")}</p>
+          <p style="margin:0; font-size:16px;">Teacher: ${teacherName}</p>
+          <hr style="margin-top:10px;">
+        </div>
+      `;
+
+      const w = window.open();
+      w.document.write(`<html><head><title>Attendance Report</title></head><body>${headerHTML}${currentTableHTML}</body></html>`);
+      w.print();
+    }
+  </script>
+</body>
+</html>

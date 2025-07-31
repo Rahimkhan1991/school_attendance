@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mark Attendance</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #74ebd5, #acb6e5);
+      min-height: 100vh;
+      font-family: "Segoe UI", sans-serif;
+      padding: 40px 20px;
+      margin: 0;
+    }
+
+    .container {
+      background: white;
+      max-width: 700px;
+      margin: auto;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    .date-label {
+      text-align: center;
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      margin-bottom: 6px;
+      display: block;
+      color: #2c3e50;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    .student-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .student-card {
+      background: #ecf0f1;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .student-name {
+      font-weight: 500;
+      font-size: 16px;
+      color: #34495e;
+    }
+
+    .status-select {
+      padding: 8px 10px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: 1px solid #888;
+      min-width: 140px;
+    }
+
+    button {
+      background-color: #2e86de;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #1b4f72;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>📋 Mark Attendance</h2>
+    <div class="date-label" id="currentDate"></div>
+
+    <label for="classSelect">Select Class:</label>
+    <select id="classSelect" onchange="loadStudents()" disabled></select>
+
+    <div class="student-list" id="studentList"></div>
+
+    <button onclick="submitAttendance()">✅ Submit Attendance</button>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem("attendanceUser"));
+    if (!user) {
+      window.location.href = "login.html";
+    }
+
+    const classSelect = document.getElementById("classSelect");
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString("en-GB"); // DD/MM/YYYY
+    document.getElementById("currentDate").innerText = `📅 Date: ${formattedDate}`;
+
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbyNWTluHoK_rZD0bJXll7g0vZ3f6yr4bQbrRw5FmIeMDJSQyvO6cTcR6oVZK8e-yj1icA/exec';
+
+    // Role logic
+    if (user.role === "admin") {
+      classSelect.innerHTML = `
+        <option value="">-- Select Class --</option>
+        <option value="Class_1A">Class 1A</option>
+        <option value="Class_1B">Class 1B</option>
+        <option value="Class_2A">Class 2A</option>
+        <option value="Class_2B">Class 2B</option>
+        <option value="Class_3A">Class 3A</option>
+        <option value="Class_3B">Class 3B</option>
+        <option value="Class_4A">Class 4A</option>
+        <option value="Class_4B">Class 4B</option>
+        <option value="Class_5A">Class 5A</option>
+        <option value="Class_5B">Class 5B</option>
+        <option value="Class_6A">Class 6A</option>
+        <option value="Class_6B">Class 6B</option>
+      `;
+      classSelect.disabled = false;
+    } else {
+      classSelect.innerHTML = `<option value="${user.className}" selected>${user.className.replace("_", " ")}</option>`;
+      classSelect.disabled = true;
+    }
+
+    window.onload = function () {
+      if (classSelect.value) {
+        loadStudents();
+      }
+    };
+
+    async function loadStudents() {
+      const className = classSelect.value;
+      const studentList = document.getElementById("studentList");
+      studentList.innerHTML = "";
+
+      if (!className) return;
+
+      try {
+        const res = await fetch(`${scriptURL}?action=getStudents&className=${className}`);
+        const students = await res.json();
+
+        students.forEach((student, index) => {
+          const card = document.createElement("div");
+          card.className = "student-card";
+          card.innerHTML = `
+            <div class="student-name">${student.roll} - ${student.name}</div>
+            <select class="status-select" data-roll="${student.roll}" data-name="${student.name}">
+              <option value="Hadir" selected>✅ Hadir</option>
+              <option value="Izin">🟡 Izin</option>
+              <option value="Sakit">🔴 Sakit</option>
+              <option value="Alfa">❌ Alpa</option>
+            </select>
+          `;
+          studentList.appendChild(card);
+        });
+      } catch (err) {
+        console.error("Failed to fetch students", err);
+        studentList.innerHTML = "<p>⚠️ Error loading students.</p>";
+      }
+    }
+
+    async function submitAttendance() {
+      const className = classSelect.value;
+      if (!className) return alert("Please select a class.");
+
+      const selects = document.querySelectorAll(".status-select");
+      const attendance = [];
+
+      selects.forEach((sel, index) => {
+        attendance.push({
+          rollNumber: sel.dataset.roll,
+          name: sel.dataset.name,
+          rowIndex: index,
+          status: sel.value
+        });
+      });
+
+      const dateStr = formattedDate.split("/").join("/");
+
+      const url = `${scriptURL}?action=markAttendance&className=${className}&attendanceDate=${dateStr}&attendanceData=${encodeURIComponent(JSON.stringify(attendance))}`;
+
+      try {
+        const res = await fetch(url);
+        const result = await res.json();
+        if (result.success) {
+          alert("✅ Attendance submitted successfully.");
+        } else {
+          alert("❌ Submission failed: " + result.message);
+        }
+      } catch (err) {
+        console.error("Submit failed", err);
+        alert("⚠️ Error submitting attendance.");
+      }
+    }
+  </script>
+</body>
+
+</html>

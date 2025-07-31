@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2196f3">
+<link rel="icon" href="icon-192.png" type="image/png">
+
+  <div style="text-align: center; margin-top: 20px;">
+  <img src="image/schoolimage.jpg" alt="School Logo" style="max-height: 120px; border-radius: 10px;" />
+  <h1 style="font-size: 24px; color: #007bff;">SDN Bandungrejosari 3 Malang</h1>
+</div>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #74ebd5, #acb6e5);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    .button {
+      background-color: #4f46e5;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      margin: 10px 0;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+      width: 100%;
+    }
+
+    .button:hover {
+      background-color: #4338ca;
+    }
+
+    .logout {
+      background: none;
+      color: #e74c3c;
+      font-size: 14px;
+      margin-top: 20px;
+      cursor: pointer;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Welcome to Attendance System</h1>
+    <button class="button" onclick="navigateTo('mark-attendance.html')">Mark Attendance</button>
+    <button class="button" onclick="navigateTo('view-student.html')">View Students</button>
+    <button class="button" onclick="navigateToReport()">Attendance Report</button>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem("attendanceUser"));
+    if (!user) {
+      window.location.href = "login.html";
+    }
+
+    function navigateTo(page) {
+      window.location.href = page;
+    }
+
+    function navigateToReport() {
+      if (user.role === 'admin') {
+        window.location.href = 'attendance-report.html';
+      } else if (user.role === 'teacher') {
+        window.location.href = 'attendance-report.html?class=' + encodeURIComponent(user.assignedClass);
+      } else {
+        alert("You don't have permission to access reports.");
+      }
+    }
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js")
+    .then(() => console.log("Service Worker Registered"));
+}
+
+    function logout() {
+      localStorage.removeItem("attendanceUser");
+      window.location.href = "login.html";
+    }
+
+  </script>
+</body>
+
+</html>

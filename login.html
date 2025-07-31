@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #74ebd5, #acb6e5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .login-box {
+      background-color: white;
+      padding: 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 350px;
+      text-align: center;
+    }
+
+    .login-box img {
+      width: 100px;
+      height: auto;
+      margin-bottom: 15px;
+    }
+
+    .login-box h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .login-box button {
+      width: 100%;
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .login-box button:hover {
+      background-color: #0056b3;
+    }
+
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-box">
+    <!-- ✅ Logo image -->
+    <div style="text-align: center; margin-top: 20px;">
+  <img src="image/schoolimage.jpg" alt="School Logo" style="max-height: 120px; border-radius: 10px;" />
+  <h1 style="font-size: 24px; color: #007bff;">SDN Bandungrejosari 3 Malang</h1>
+
+    <h2>Attendance Login</h2>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <div id="error" class="error"></div>
+  </div>
+
+  <script>
+    const users = {
+      "admin": { password: "admin123", role: "admin" },
+      "class-1a": { password: "farida901", role: "teacher", className: "Class_1A",teacherName: 'Ms. FARIDA HARIANI'  },
+      "class-1b": { password: "ine582", role: "teacher", className: "Class_1B",teacherName: 'Ms. INE AYU KUSUMAH DEWI'  },
+      "class-2a": { password: "nadia743", role: "teacher", className: "Class_2A",teacherName: 'Ms. NADIA ROFIKA'  },
+      "class-2b": { password: "wimbi664", role: "teacher", className: "Class_2B",teacherName: 'Mr. WIMBI DAMARA PUTRA'  },
+      "class-3a": { password: "watini526", role: "teacher", className: "Class_3A",teacherName: 'Ms. WATINI'  },
+      "class-3b": { password: "kristin345", role: "teacher", className: "Class_3B",teacherName: 'Ms. KRISTIN KARTIKAWATI'  },
+      "class-4a": { password: "hartati278", role: "teacher", className: "Class_4A",teacherName: 'Ms. HARTATI PUSPITA DININGRUM'  },
+      "class-4b": { password: "agustina919", role: "teacher", className: "Class_4B",teacherName: 'Ms. Agustina Putri Setia Mardika'  },
+      "class-5a": { password: "prima837", role: "teacher", className: "Class_5A",teacherName: 'Ms. PRIMA EKA SARI'  },
+      "class-5b": { password: "muawanah382", role: "teacher", className: "Class_5B",teacherName: 'Ms. MU AWANAH'  },
+      "class-6a": { password: "aulina471", role: "teacher", className: "Class_6A",teacherName: 'Ms. AULINA MAGHFIROH'  },
+      "class-6b": { password: "hermin610", role: "teacher", className: "Class_6B",teacherName: 'Mr. HERMIN SUSWAT'  },
+      "test123": { password: "rahim123", role: "teacher", className: "Class_7B",teacherName: 'Mr. Rahim' },
+    };
+
+    function login() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorDiv = document.getElementById("error");
+
+      if (users[username] && users[username].password === password) {
+        const userData = {
+          username: username,
+          role: users[username].role,
+          className: users[username].className || null,
+          teacherName: users[username].teacherName || ""
+        };
+        localStorage.setItem("attendanceUser", JSON.stringify(userData));
+        window.location.href = "index.html";
+      } else {
+        errorDiv.textContent = "Invalid username or password.";
+      }
+    }
+  </script>
+</body>
+</html>
